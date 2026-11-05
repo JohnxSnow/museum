@@ -191,110 +191,132 @@ class ImperialVirtualGallery {
     const joystickKnob = document.getElementById('joystick-knob');
     const mobileActionBtn = document.getElementById('mobile-action-btn');
 
-    if (isTouch) {
-      this.isMobile = true;
-      if (mobileUI) mobileUI.classList.remove('hidden');
+    if (!isTouch) return;
 
-      // Tap on start button starts mobile experience without pointer lock
-      const startBtn = document.getElementById('start-btn');
-      if (startBtn) {
-        startBtn.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          this.blockerEl.classList.add('hidden');
-          if (window.galleryAudio) window.galleryAudio.init();
-        }, { passive: false });
-      }
+    this.isMobile = true;
+    if (mobileUI) mobileUI.classList.remove('hidden');
 
-      // Left joystick touch handling
-      if (joystickZone && joystickKnob) {
-        joystickZone.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          const touch = e.changedTouches[0];
-          this.joystickTouchId = touch.identifier;
-          this.joystickActive = true;
+    // Prevent Safari/Chrome mobile gestures (pinch zoom, pull-to-refresh, navigation swipes)
+    document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
 
-          const rect = joystickZone.getBoundingClientRect();
-          this.joystickOrigin = {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2
-          };
-          this.updateJoystick(touch.clientX, touch.clientY, joystickKnob);
-        }, { passive: false });
-
-        window.addEventListener('touchmove', (e) => {
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            const touch = e.changedTouches[i];
-            if (touch.identifier === this.joystickTouchId) {
-              e.preventDefault();
-              this.updateJoystick(touch.clientX, touch.clientY, joystickKnob);
-            } else if (touch.identifier === this.lookTouchId) {
-              e.preventDefault();
-              this.updateTouchLook(touch.clientX, touch.clientY);
-            }
-          }
-        }, { passive: false });
-
-        const resetJoystick = (e) => {
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === this.joystickTouchId) {
-              this.joystickActive = false;
-              this.joystickTouchId = null;
-              this.joystickVector = { x: 0, y: 0 };
-              joystickKnob.style.transform = 'translate(-50%, -50%)';
-            } else if (e.changedTouches[i].identifier === this.lookTouchId) {
-              this.lookTouchId = null;
-            }
-          }
-        };
-
-        window.addEventListener('touchend', resetJoystick);
-        window.addEventListener('touchcancel', resetJoystick);
-      }
-
-      // Right half screen touch look swipe
-      window.addEventListener('touchstart', (e) => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const touch = e.changedTouches[i];
-          if (touch.clientX > window.innerWidth * 0.30 && this.lookTouchId === null) {
-            // Check not tapping on buttons, modal dialog, or headers
-            if (e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('#artwork-modal')) {
-              this.lookTouchId = touch.identifier;
-              this.lookLastPos = { x: touch.clientX, y: touch.clientY };
-            }
-          }
-        }
-      });
-
-      // Mobile Action Button
-      if (mobileActionBtn) {
-        mobileActionBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (this.activeArtwork) {
-            this.openArtworkModal(this.activeArtwork);
-          }
-        });
-        mobileActionBtn.addEventListener('touchstart', (e) => {
-          e.stopPropagation();
-          if (this.activeArtwork) {
-            this.openArtworkModal(this.activeArtwork);
-          }
-        }, { passive: true });
-      }
+    // Tap on start button starts mobile experience smoothly
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+      const handleStart = (e) => {
+        if (e && e.cancelable) e.preventDefault();
+        this.blockerEl.classList.add('hidden');
+        if (window.galleryAudio) window.galleryAudio.init();
+      };
+      startBtn.addEventListener('touchstart', handleStart, { passive: false });
+      startBtn.addEventListener('click', handleStart);
     }
 
-    // Tapping floating prompt also opens artwork
+    // Rock-Solid Dual-Zone Touch System:
+    // Left 45% = Movement Joystick | Right 55% = Smooth 360° Looking Around
+    const onTouchStart = (e) => {
+      const target = e.target;
+      const isInteractive = target.tagName === 'BUTTON' || 
+                            target.closest('button') || 
+                            target.closest('#artwork-modal') || 
+                            target.closest('#quality-menu') ||
+                            target.closest('.dropdown-content') ||
+                            target.closest('.header-actions');
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+
+        // 1. Left side of screen (X < 45% of viewport) -> Virtual Joystick for Walking
+        if (touch.clientX < window.innerWidth * 0.45 && this.joystickTouchId === null) {
+          if (!isInteractive) {
+            if (e.cancelable) e.preventDefault();
+            this.joystickTouchId = touch.identifier;
+            this.joystickActive = true;
+
+            if (joystickZone) {
+              const rect = joystickZone.getBoundingClientRect();
+              this.joystickOrigin = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+              };
+              this.updateJoystick(touch.clientX, touch.clientY, joystickKnob);
+            }
+          }
+        }
+        // 2. Right side of screen (X >= 45% of viewport) -> Smooth 360° Looking Around
+        else if (touch.clientX >= window.innerWidth * 0.45 && this.lookTouchId === null) {
+          if (!isInteractive) {
+            if (e.cancelable) e.preventDefault();
+            this.lookTouchId = touch.identifier;
+            this.lookLastPos = { x: touch.clientX, y: touch.clientY };
+          }
+        }
+      }
+    };
+
+    const onTouchMove = (e) => {
+      // Allow scrolling inside artwork modal when reading descriptions
+      if (this.modalEl && !this.modalEl.classList.contains('hidden') && e.target.closest('#artwork-modal')) {
+        return;
+      }
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === this.joystickTouchId) {
+          if (e.cancelable) e.preventDefault();
+          this.updateJoystick(touch.clientX, touch.clientY, joystickKnob);
+        } else if (touch.identifier === this.lookTouchId) {
+          if (e.cancelable) e.preventDefault();
+          this.updateTouchLook(touch.clientX, touch.clientY);
+        }
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === this.joystickTouchId) {
+          this.joystickActive = false;
+          this.joystickTouchId = null;
+          this.joystickVector = { x: 0, y: 0 };
+          if (joystickKnob) {
+            joystickKnob.style.transform = 'translate(-50%, -50%)';
+          }
+        } else if (touch.identifier === this.lookTouchId) {
+          this.lookTouchId = null;
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    // Mobile Action Button (Inspect Artwork)
+    if (mobileActionBtn) {
+      const handleAction = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (e && e.cancelable) e.preventDefault();
+        if (this.activeArtwork) {
+          this.openArtworkModal(this.activeArtwork);
+        }
+      };
+      mobileActionBtn.addEventListener('click', handleAction);
+      mobileActionBtn.addEventListener('touchstart', handleAction, { passive: false });
+    }
+
+    // Tapping floating prompt on screen also opens artwork
     if (this.promptEl) {
-      this.promptEl.addEventListener('click', () => {
+      const handlePrompt = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         if (this.activeArtwork) {
           this.openArtworkModal(this.activeArtwork);
         }
-      });
-      this.promptEl.addEventListener('touchstart', (e) => {
-        e.stopPropagation();
-        if (this.activeArtwork) {
-          this.openArtworkModal(this.activeArtwork);
-        }
-      }, { passive: true });
+      };
+      this.promptEl.addEventListener('click', handlePrompt);
+      this.promptEl.addEventListener('touchstart', handlePrompt, { passive: false });
     }
   }
 
@@ -310,7 +332,9 @@ class ImperialVirtualGallery {
     const knobX = Math.cos(angle) * clampedDist;
     const knobY = Math.sin(angle) * clampedDist;
 
-    knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+    if (knob) {
+      knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+    }
 
     this.joystickVector = {
       x: knobX / maxRadius,
@@ -323,10 +347,13 @@ class ImperialVirtualGallery {
     const dy = clientY - this.lookLastPos.y;
     this.lookLastPos = { x: clientX, y: clientY };
 
+    // Filter out sudden coordinate jumps
+    if (Math.abs(dx) > 120 || Math.abs(dy) > 120) return;
+
     this.cameraEuler.setFromQuaternion(this.camera.quaternion);
-    this.cameraEuler.y -= dx * 0.0055;
-    this.cameraEuler.x -= dy * 0.0045;
-    this.cameraEuler.x = Math.max(-Math.PI / 2.6, Math.min(Math.PI / 2.6, this.cameraEuler.x));
+    this.cameraEuler.y -= dx * 0.0048;
+    this.cameraEuler.x -= dy * 0.0038;
+    this.cameraEuler.x = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, this.cameraEuler.x));
 
     this.camera.quaternion.setFromEuler(this.cameraEuler);
   }

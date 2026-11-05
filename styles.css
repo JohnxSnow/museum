@@ -37,12 +37,24 @@
 }
 
 body, html {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  touch-action: none;
   background-color: var(--bg-dark);
   font-family: var(--font-ku);
   color: var(--text-main);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Canvas Container */
@@ -53,6 +65,15 @@ body, html {
   width: 100%;
   height: 100%;
   z-index: 1;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+#canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* Crosshair in the center */
