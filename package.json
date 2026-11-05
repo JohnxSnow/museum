@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "مۆزەخانەی هونەری مۆدێرنی سێ ڕەهەندی • 3D Virtual Art Gallery",
   "scripts": {
+    "build": "echo 'Static 3D Gallery Ready'",
     "start": "node server.js"
   },
   "keywords": ["threejs", "virtual-gallery", "3d", "art", "kurdish"],
