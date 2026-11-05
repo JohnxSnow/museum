@@ -1,0 +1,15 @@
+{
+  "name": "virtual-3d-art-gallery",
+  "version": "1.0.0",
+  "description": "مۆزەخانەی هونەری مۆدێرنی سێ ڕەهەندی • 3D Virtual Art Gallery",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Static 3D Gallery build ready'",
+    "start": "node server.js",
+    "download": "node download_artworks.js"
+  },
+  "keywords": ["threejs", "virtual-gallery", "3d", "art", "kurdish"],
+  "author": "Zhiyar Hemn (ژیار هێمن)",
+  "license": "MIT"
+}
+

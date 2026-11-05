@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مۆزەخانەی نەتەوەیی شاهانە | Grand Royal 3D Art Palace</title>
+  <!-- Google Fonts for Kurdish and English typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Vazirmatn:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Three.js and PointerLockControls (Self-contained CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+</head>
+<body>
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Crosshair for aiming at artworks -->
+  <div id="crosshair"></div>
+
+  <!-- Interactive Prompt when near an artwork -->
+  <div id="interaction-prompt" class="hidden">
+    <div class="prompt-icon">👁️</div>
+    <div class="prompt-text">
+      <span class="prompt-key">E</span>
+      <span class="prompt-label">کلیک بکە یان E دابگرە بۆ بینینی شاکارەکە</span>
+    </div>
+  </div>
+
+  <!-- Top Navigation & Controls Bar -->
+  <header id="hud-header">
+    <div class="gallery-branding">
+      <div class="logo-mark">🏛️</div>
+      <div class="gallery-title-group">
+        <div class="gallery-title-row">
+          <h1 class="gallery-title">مۆزەخانەی نەتەوەیی شاهانە</h1>
+          <span class="creator-badge" title="دیزاین و گەشەپێدانی سێ ڕەهەندی">✨ دروستکار و گەشەپێدەر: <b>ژیار هێمن</b></span>
+        </div>
+        <span class="gallery-subtitle">Grand Imperial Palace of 56 Real Masterpieces • Surrealism, Illusions & Cultural Heritage (180m)</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Photo Mode Camera Button -->
+      <button id="photo-mode-btn" class="glass-btn gold-glow" title="کامێرای وێنەگرتن و سێڵفی مۆزەخانە (P)">
+        <span class="tour-icon">📷</span>
+        <span class="tour-label">وێنەگرتن</span>
+      </button>
+
+      <!-- Cinematic Auto-Tour Mode -->
+      <button id="cinematic-tour-btn" class="glass-btn" title="گەشتی سینەمایی بەناو کۆشکدا (C)">
+        <span class="tour-icon">🎥</span>
+        <span class="tour-label">گەشتی سینەمایی</span>
+      </button>
+
+      <!-- Lighting Atmosphere Selector -->
+      <div class="theme-selector" title="گۆڕینی ڕووناکی و کات">
+        <button class="theme-btn active" data-theme="day" id="btn-theme-day">☀️ ڕۆژ</button>
+        <button class="theme-btn" data-theme="sunset" id="btn-theme-sunset">🌅 خۆرئاوا</button>
+        <button class="theme-btn" data-theme="night" id="btn-theme-night">🌌 شەو</button>
+      </div>
+
+      <!-- Graphics Quality Preset Selector -->
+      <div class="quality-dropdown">
+        <button id="quality-btn" class="glass-btn" title="ڕێکخستنی کواڵیتی گرافیک">
+          <span class="quality-icon">⚙️</span>
+          <span id="quality-label">هاوسەنگ</span>
+        </button>
+        <div id="quality-menu" class="dropdown-content hidden">
+          <button data-quality="low">🚀 خێرا (Performance - 60 FPS)</button>
+          <button data-quality="medium" class="active">⚖️ هاوسەنگ (Balanced)</button>
+          <button data-quality="ultra">👑 شاهانە (Ultra HD)</button>
+        </div>
+      </div>
+
+      <!-- Ambient Audio Toggle -->
+      <button id="audio-toggle-btn" class="glass-btn" title="دەنگ و میوزیک">
+        <span class="audio-icon">🎵</span>
+        <span class="audio-label">میوزیک: ناچالاک</span>
+      </button>
+
+      <!-- Quick Teleport Menu across the 8 Wings + Rotunda -->
+      <div class="teleport-dropdown">
+        <button id="teleport-btn" class="glass-btn">
+          <span>📍 هۆڵەکان و باڵەکان</span>
+        </button>
+        <div id="teleport-menu" class="dropdown-content hidden">
+          <button data-goto="rotunda">🏛️ ڕووتۆندا (هۆڵی ناوەندی، فوارە و چریکەی ڕووناکی)</button>
+          <button data-goto="north">🎨 هۆڵی باکوور: ڕێنیسانسی باڵا (دا ڤینچی و مایکل ئەنجیلۆ)</button>
+          <button data-goto="northeast">👑 باڵی باکووری ڕۆژهەڵات: سەردەمی زێڕینی هۆڵەندا (ڤێرمیر و ڕێمبرانت)</button>
+          <button data-goto="east">🌻 هۆڵی ڕۆژهەڵات: ئیمپڕێشنیزم (ڤان گۆگ و کلۆد مۆنێ)</button>
+          <button data-goto="southeast">🌸 باڵی باشووری ڕۆژهەڵات: خاڵکاری و بۆتیچێلی (سیۆرا و ڤینۆس)</button>
+          <button data-goto="south">🌊 هۆڵی باشوور: مۆدێرنیزم و سیمبۆلیزم (کلیمت، مونک و هاپەر)</button>
+          <button data-goto="southwest">🌀 باڵی باشووری ڕۆژئاوا: سوریالیزم، خەیاڵ و ئەقڵتەزێن (دالی، ماگریت، ئێشەر، بۆش)</button>
+          <button data-goto="west">🏰 هۆڵی ڕۆژئاوا: کەلەپوور و شارستانیەتی کوردستان (قەڵای هەولێر، شانەدەر، لالش، نەورۆز)</button>
+          <button data-goto="northwest">🦁 باڵی باکووری ڕۆژئاوا: مێزۆپۆتامیا و ئاسەوارە دێرینەکان (عەشتار، گیلگامێش، حەسەنلوو)</button>
+        </div>
+      </div>
+
+      <!-- Help / Instructions Button -->
+      <button id="help-btn" class="glass-btn icon-only" title="ڕێنمایی">
+        <span>❓</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mini Map Overlay -->
+  <div id="minimap-container">
+    <div class="minimap-header">نەخشەی کۆشک (١٨٠م)</div>
+    <canvas id="minimap-canvas" width="180" height="180"></canvas>
+  </div>
+
+  <!-- Mobile Virtual Controls (Shown on Touch Devices & Mobile Viewports) -->
+  <div id="mobile-controls" class="hidden">
+    <!-- Virtual Floating Joystick on bottom-left -->
+    <div id="joystick-zone">
+      <div id="joystick-knob"></div>
+    </div>
+    
+    <!-- Mobile Action Button on bottom-right -->
+    <button id="mobile-action-btn" class="glass-btn" title="سەیرکردنی تابلۆ">
+      <span class="action-emoji">👁️</span>
+      <span class="action-text">سەیرکردن</span>
+    </button>
+  </div>
+
+  <!-- Start / Instructions Screen (Pointer Lock Blocker) -->
+  <div id="blocker">
+    <div id="instructions" class="glass-panel">
+      <div class="badge">کۆشکی شاهانەی ٥٦ شاکاری ڕاستەقینەی جیهان، سوریالیزم و کەلەپوور • 180m Imperial Palace</div>
+      <h2>بەخێربێن بۆ گەورەترین مۆزەخانەی مەجازی</h2>
+      <p class="lead">گەشتێک لە نێوان ٨ هۆڵی زەبەلاح و ٤ باڵی گۆشەکان: مۆنا لیزا، دروستکردنی ئادەم، کاتژمێرە تواوەکانی دالی، پارادۆکسە ئەقڵتەزێنەکانی ئێشەر، قەڵای هەولێر، ئەشکەوتی شانەدەر، دەروازەی عەشتاری بابیلۆن، تاڤگەی کریستاڵ و چریکەی ڕووناکی ئەفسوناوی</p>
+
+      <!-- Creator & Developer Attribution Card -->
+      <div class="creator-signature-card">
+        <div class="sig-avatar">👑</div>
+        <div class="sig-info">
+          <div class="sig-title">دیزاین، تەلارسازیی و گەشەپێدانی سێ ڕەهەندی (3D Virtual Museum)</div>
+          <div class="sig-name">دروستکار و گەشەپێدەر: <strong>ژیار هێمن (Zhiyar Hemn)</strong></div>
+        </div>
+        <div class="sig-tag">✨ وەشان و چاپی تایبەت</div>
+      </div>
+
+      <div class="controls-guide">
+        <div class="control-card">
+          <div class="keys-visual">
+            <span class="key-cap">W</span>
+            <div class="key-row">
+              <span class="key-cap">A</span>
+              <span class="key-cap">S</span>
+              <span class="key-cap">D</span>
+            </div>
+          </div>
+          <div class="control-desc">
+            <strong>جووڵەکردن</strong>
+            <span>یان دوگمەکانی ئاڕاستە (Arrow Keys)</span>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="keys-visual">
+            <span class="mouse-icon">🖱️</span>
+          </div>
+          <div class="control-desc">
+            <strong>سەیرکردنی دەوروبەر</strong>
+            <span>ماوس بە هەموو لایەکدا بجووڵێنە (360°)</span>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="keys-visual">
+            <span class="key-cap">E</span>
+          </div>
+          <div class="control-desc">
+            <strong>سەیرکردنی تابلۆکان</strong>
+            <span>کلیک لەسەر تابلۆ یان دوگمەی E</span>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="keys-visual">
+            <span class="key-cap">C</span>
+          </div>
+          <div class="control-desc">
+            <strong>گەشتی سینەمایی خۆکار</strong>
+            <span>فڕینی کامێرا بەناو تەلارەکەدا</span>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="keys-visual">
+            <span class="key-cap">P</span>
+          </div>
+          <div class="control-desc">
+            <strong>کامێرای وێنەگرتن (Photo Mode)</strong>
+            <span>گرتنی وێنەی سینەمایی بە فلتەر و لۆگۆ</span>
+          </div>
+        </div>
+
+        <div class="control-card mobile-tip-card">
+          <div class="keys-visual">
+            <span class="mouse-icon">📱</span>
+          </div>
+          <div class="control-desc">
+            <strong>کۆنتڕۆڵی مۆبایل</strong>
+            <span>جۆیستیکی چەپ بۆ ڕۆشتن، لای ڕاست ڕابکێشە بۆ سەیرکردن، دوگمەی 👁️ بۆ تابلۆ</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="start-btn" class="primary-btn pulse">
+        <span>دەستپێکردنی گەشتەکە</span>
+        <span class="btn-arrow">←</span>
+      </button>
+
+      <div class="tips-footer">
+        💡 تێبینی: لە کۆمپیوتەردا دوگمەی <strong>ESC</strong> ماوس ئازاد دەکات. لە مۆبایلیشدا دەتوانیت ڕاستەوخۆ بە دەست بگەڕێیت.
+      </div>
+    </div>
+  </div>
+
+  <!-- Artwork Inspection Modal (Real HD Photo & Narrative) -->
+  <div id="artwork-modal" class="modal-backdrop hidden">
+    <div class="modal-dialog glass-panel">
+      <button id="modal-close-btn" class="modal-close" title="داخستن (ESC)">✕</button>
+
+      <div class="modal-layout">
+        <!-- Artwork High-Res Real Image Display -->
+        <div class="modal-art-view">
+          <div class="art-frame-wrapper">
+            <img id="modal-art-img" src="" alt="Real Artwork Display" style="display: none;">
+            <canvas id="modal-art-canvas" width="600" height="600"></canvas>
+          </div>
+          <div class="art-dimensions" id="modal-art-dimensions">120 × 90 cm • Oil on Canvas</div>
+        </div>
+
+        <!-- Artwork Info & Story -->
+        <div class="modal-art-details">
+          <div class="art-badge" id="modal-art-genre">ڕێنیسانسی باڵا</div>
+          <h2 class="art-title-ku" id="modal-art-title-ku">ناوی تابلۆ</h2>
+          <h3 class="art-title-en" id="modal-art-title-en">Artwork Title</h3>
+
+          <div class="art-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">شێوەکار / هونەرمەند:</span>
+              <span class="meta-val" id="modal-art-artist">ناوی هونەرمەند</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">ساڵی بەرهەمهێنان:</span>
+              <span class="meta-val" id="modal-art-year">1503</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">تەکنیک:</span>
+              <span class="meta-val" id="modal-art-technique">ڕۆنی لەسەر کەتان</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">شوێن / باڵ:</span>
+              <span class="meta-val" id="modal-art-hall">هۆڵی باکوور</span>
+            </div>
+          </div>
+
+          <div class="art-description-box">
+            <div class="desc-header">
+              <h4>چیرۆک، مێژوو و شیکاری هونەری:</h4>
+              <!-- Audio Guide Button -->
+              <button id="audio-guide-btn" class="voice-btn" title="گوێگرتن لە دەنگی ڕێبەری مۆزەخانە">
+                <span class="voice-icon">🔊</span>
+                <span class="voice-label">لێدانی دەنگ</span>
+              </button>
+            </div>
+            <p id="modal-art-desc-ku" class="desc-ku">لێرەدا وەسفی پڕ لە جوانی و مانای تابلۆکە دادەنرێت...</p>
+            <p id="modal-art-desc-en" class="desc-en">Artistic description and narrative...</p>
+          </div>
+
+          <div class="modal-footer-actions">
+            <button id="download-art-btn" class="secondary-btn">
+              <span>📥 داگرتنی تابلۆی ئەسڵی (HD)</span>
+            </button>
+            <button id="resume-tour-btn" class="primary-btn">
+              <span>گەڕانەوە بۆ مۆزەخانە</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cinematic Tour HUD Overlay (Shown when auto-tour is running) -->
+  <div id="cinematic-hud" class="hidden">
+    <div class="cinematic-badge">🎥 گەشتی سینەمایی ئیمپراتۆری</div>
+    <div id="cinematic-location" class="cinematic-title">ڕووتۆندای ناوەندی و گومەزی زێڕین</div>
+    <div id="cinematic-artwork" class="cinematic-subtitle">چریکەی تیشکی خودایی و تاڤگەی کریستاڵ</div>
+    <div class="cinematic-hint">کلیک بکە یان پیتی C دابگرە بۆ وەستاندنی گەشتەکە</div>
+  </div>
+
+  <!-- Photo Mode Overlay (Viewfinder & Controls) -->
+  <div id="photo-mode-overlay" class="hidden">
+    <!-- Camera Viewfinder Frame with Golden Corners -->
+    <div class="viewfinder-frame">
+      <div class="vf-corner vf-tl"></div>
+      <div class="vf-corner vf-tr"></div>
+      <div class="vf-corner vf-bl"></div>
+      <div class="vf-corner vf-br"></div>
+      <div class="vf-crosshair"></div>
+      
+      <!-- Watermark Badge overlay -->
+      <div class="photo-watermark">
+        <span class="wm-icon">🏛️</span>
+        <div class="wm-text">
+          <div class="wm-title">مۆزەخانەی نەتەوەیی شاهانە</div>
+          <div class="wm-creator">✨ دروستکار و گەشەپێدەر: <b>ژیار هێمن (Zhiyar Hemn)</b></div>
+          <div class="wm-sub">Grand Royal Art Palace • 56 Real Masterpieces</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen Flash Animation element -->
+    <div id="photo-flash" class="photo-flash"></div>
+
+    <!-- Photo Mode Top Bar -->
+    <div class="photo-top-bar">
+      <div class="photo-mode-title">
+        <span>📷 کامێرای سینەمایی مۆزەخانە</span>
+        <span class="photo-mode-hint" id="photo-mouse-status">🔓 ماوس ئازادە (دەستکاری فلتەر و زووم بکە یان بە ماوس ڕایبکێشە)</span>
+      </div>
+      <div class="photo-top-actions">
+        <!-- Toggle Mouse Lock/Unlock Button -->
+        <button id="photo-mouse-toggle-btn" class="glass-btn gold-glow" title="ئازادکردن یان قفڵکردنی ماوس (Tab)">
+          <span id="photo-mouse-icon">🔒</span>
+          <span id="photo-mouse-text">سەیرکردنی 360° بە ماوس</span>
+        </button>
+
+        <button id="photo-exit-btn" class="glass-btn red-hover" title="دەرچوون (Esc یان P)">
+          <span>❌ دەرچوون لە کامێرا</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Photo Mode Bottom Floating Control Bar -->
+    <div class="photo-controls-bar">
+      <!-- Quick Mouse Mode Pill -->
+      <button id="photo-mouse-quick-btn" class="filter-pill mouse-pill" title="ئازادکردن یان قفڵکردنی ماوس (Tab)">
+        <span id="photo-mouse-quick-icon">🔓</span>
+        <span id="photo-mouse-quick-text">ماوس: ئازاد</span>
+      </button>
+
+      <!-- Zoom / FOV Slider -->
+      <div class="photo-control-group">
+        <span class="photo-label">🔍 زووم (Zoom):</span>
+        <input type="range" id="photo-fov-slider" min="30" max="85" value="60" step="1">
+        <span id="photo-fov-val" class="photo-val">60°</span>
+      </div>
+
+      <!-- Filters Dropdown / Pills -->
+      <div class="photo-control-group">
+        <span class="photo-label">🎨 فلتەر:</span>
+        <div class="filter-pills" id="filter-pills">
+          <button class="filter-pill active" data-filter="none">ئاسایی</button>
+          <button class="filter-pill" data-filter="cinematic">سینەمایی زێڕین</button>
+          <button class="filter-pill" data-filter="vintage">ڤینتیج / سەپیا</button>
+          <button class="filter-pill" data-filter="noir">ڕەش و سپی</button>
+          <button class="filter-pill" data-filter="dramatic">دراماتیک</button>
+        </div>
+      </div>
+
+      <!-- Shutter Snap Button -->
+      <button id="photo-shutter-btn" class="shutter-button" title="گرتنی وێنە (Space یان Enter)">
+        <div class="shutter-inner">
+          <span class="shutter-icon">📸</span>
+        </div>
+        <span class="shutter-text">گرتنی وێنە</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Photo Captured Preview Modal -->
+  <div id="photo-preview-modal" class="hidden">
+    <div class="preview-backdrop"></div>
+    <div class="preview-card">
+      <div class="preview-header">
+        <div class="preview-title-group">
+          <span class="preview-sparkle">✨</span>
+          <h3>وێنەکەت بە سەرکەوتوویی گیرا!</h3>
+        </div>
+        <button id="preview-close-btn" class="close-btn" title="داخستن">✕</button>
+      </div>
+      <div class="preview-img-container">
+        <img id="preview-captured-img" alt="Captured Palace Photo">
+      </div>
+      <div class="preview-actions">
+        <button id="download-photo-btn" class="primary-btn gold-glow">
+          <span>📥 داگرتنی وێنەکە بە کوالیتی بەرز (Full HD)</span>
+        </button>
+        <button id="retake-photo-btn" class="secondary-btn">
+          <span>📷 گەڕانەوە بۆ کامێرا</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="artwork_data.js"></script>
+  <script src="audio.js"></script>
+  <script src="artworks.js"></script>
+  <script src="gallery.js"></script>
+</body>
+</html>
