@@ -221,8 +221,8 @@ class ImperialVirtualGallery {
       startBtn.addEventListener('click', handleStart);
     }
 
-    // Rock-Solid Dual-Zone Touch System:
-    // Left 45% = Movement Joystick | Right 55% = Smooth 360° Looking Around
+    // Ergonomic Mobile Touch Controls:
+    // Bottom-Left Zone = Walking Joystick | Full Remaining Screen (85%+) = Silky-Smooth 360° Looking Around
     const onTouchStart = (e) => {
       const target = e.target;
       const isInteractive = target.tagName === 'BUTTON' || 
@@ -230,35 +230,37 @@ class ImperialVirtualGallery {
                             target.closest('#artwork-modal') || 
                             target.closest('#quality-menu') ||
                             target.closest('.dropdown-content') ||
-                            target.closest('.header-actions');
+                            target.closest('#hud-header');
+
+      if (isInteractive) return;
 
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
 
-        // 1. Left side of screen (X < 45% of viewport) -> Virtual Joystick for Walking
-        if (touch.clientX < window.innerWidth * 0.45 && this.joystickTouchId === null) {
-          if (!isInteractive) {
-            if (e.cancelable) e.preventDefault();
-            this.joystickTouchId = touch.identifier;
-            this.joystickActive = true;
+        // Bottom-left quadrant: Walk Joystick zone
+        const isJoystickArea = (touch.clientX < Math.min(window.innerWidth * 0.42, 210) && touch.clientY > window.innerHeight * 0.52);
 
-            if (joystickZone) {
-              const rect = joystickZone.getBoundingClientRect();
-              this.joystickOrigin = {
-                x: rect.left + rect.width / 2,
-                y: rect.top + rect.height / 2
-              };
-              this.updateJoystick(touch.clientX, touch.clientY, joystickKnob);
-            }
+        if (isJoystickArea && this.joystickTouchId === null) {
+          if (e.cancelable) e.preventDefault();
+          this.joystickTouchId = touch.identifier;
+          this.joystickActive = true;
+
+          if (joystickZone) {
+            const rect = joystickZone.getBoundingClientRect();
+            this.joystickOrigin = {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2
+            };
+            this.updateJoystick(touch.clientX, touch.clientY, joystickKnob);
+          } else {
+            this.joystickOrigin = { x: touch.clientX, y: touch.clientY };
           }
         }
-        // 2. Right side of screen (X >= 45% of viewport) -> Smooth 360° Looking Around
-        else if (touch.clientX >= window.innerWidth * 0.45 && this.lookTouchId === null) {
-          if (!isInteractive) {
-            if (e.cancelable) e.preventDefault();
-            this.lookTouchId = touch.identifier;
-            this.lookLastPos = { x: touch.clientX, y: touch.clientY };
-          }
+        // Anywhere else on screen = Free 360° Camera Look
+        else if (this.lookTouchId === null) {
+          if (e.cancelable) e.preventDefault();
+          this.lookTouchId = touch.identifier;
+          this.lookLastPos = { x: touch.clientX, y: touch.clientY };
         }
       }
     };
@@ -359,9 +361,9 @@ class ImperialVirtualGallery {
     if (Math.abs(dx) > 120 || Math.abs(dy) > 120) return;
 
     this.cameraEuler.setFromQuaternion(this.camera.quaternion);
-    this.cameraEuler.y -= dx * 0.0048;
-    this.cameraEuler.x -= dy * 0.0038;
-    this.cameraEuler.x = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, this.cameraEuler.x));
+    this.cameraEuler.y -= dx * 0.0075;
+    this.cameraEuler.x -= dy * 0.0055;
+    this.cameraEuler.x = Math.max(-Math.PI / 2.35, Math.min(Math.PI / 2.35, this.cameraEuler.x));
 
     this.camera.quaternion.setFromEuler(this.cameraEuler);
   }
@@ -1680,7 +1682,7 @@ class ImperialVirtualGallery {
             realTexture.generateMipmaps = true;
             canvasMat.map = realTexture;
             canvasMat.emissiveMap = realTexture;
-            canvasMat.emissive = new THREE.Color(0x353535);
+            canvasMat.emissive = new THREE.Color(0x484848);
             canvasMat.needsUpdate = true;
           },
           undefined,
@@ -1691,7 +1693,7 @@ class ImperialVirtualGallery {
             fbTex.encoding = THREE.sRGBEncoding;
             canvasMat.map = fbTex;
             canvasMat.emissiveMap = fbTex;
-            canvasMat.emissive = new THREE.Color(0x353535);
+            canvasMat.emissive = new THREE.Color(0x484848);
             canvasMat.needsUpdate = true;
           }
         );
@@ -1701,7 +1703,7 @@ class ImperialVirtualGallery {
         fbTex.encoding = THREE.sRGBEncoding;
         canvasMat.map = fbTex;
         canvasMat.emissiveMap = fbTex;
-        canvasMat.emissive = new THREE.Color(0x353535);
+        canvasMat.emissive = new THREE.Color(0x484848);
         canvasMat.needsUpdate = true;
       }
 
@@ -2010,7 +2012,8 @@ class ImperialVirtualGallery {
     window.addEventListener('keyup', onKeyUp);
 
     window.addEventListener('click', () => {
-      if (!this.controls.isLocked && !this.isCinematicTour && !this.isMobile) {
+      if (this.isMobile) return; // Prevent accidental modal popups during touch swipes
+      if (!this.controls.isLocked && !this.isCinematicTour) {
         // Blocker handles lock
       } else if (this.activeArtwork) {
         this.openArtworkModal(this.activeArtwork);
@@ -2530,29 +2533,29 @@ class ImperialVirtualGallery {
 
   setLightingTheme(theme) {
     if (theme === 'day') {
-      this.scene.background.setHex(0x0e111a);
+      this.scene.background.setHex(0x182030); // Bright, royal architectural ambiance
       this.ambientLight.color.setHex(0xffffff);
-      this.ambientLight.intensity = 0.52;
-      this.dirLight.color.setHex(0xfffaed);
-      this.dirLight.intensity = 0.95;
+      this.ambientLight.intensity = 1.15; // Luminous museum illumination
+      this.dirLight.color.setHex(0xfffaea);
+      this.dirLight.intensity = 1.35;
       this.spotlights.forEach((s) => (s.intensity = 2.6));
-      if (this.sunbeamMesh) this.sunbeamMesh.material.opacity = 0.15;
-    } else if (theme === 'sunset') {
-      this.scene.background.setHex(0x1a0d18);
-      this.ambientLight.color.setHex(0xffbfa0);
-      this.ambientLight.intensity = 0.44;
-      this.dirLight.color.setHex(0xff7744);
-      this.dirLight.intensity = 1.0;
-      this.spotlights.forEach((s) => (s.intensity = 3.0));
       if (this.sunbeamMesh) this.sunbeamMesh.material.opacity = 0.22;
+    } else if (theme === 'sunset') {
+      this.scene.background.setHex(0x281824);
+      this.ambientLight.color.setHex(0xffcaa5);
+      this.ambientLight.intensity = 0.95;
+      this.dirLight.color.setHex(0xff8844);
+      this.dirLight.intensity = 1.2;
+      this.spotlights.forEach((s) => (s.intensity = 3.0));
+      if (this.sunbeamMesh) this.sunbeamMesh.material.opacity = 0.28;
     } else if (theme === 'night') {
-      this.scene.background.setHex(0x03050a);
-      this.ambientLight.color.setHex(0x102040);
-      this.ambientLight.intensity = 0.22;
-      this.dirLight.color.setHex(0x3366cc);
-      this.dirLight.intensity = 0.38;
+      this.scene.background.setHex(0x0c1220);
+      this.ambientLight.color.setHex(0x304870);
+      this.ambientLight.intensity = 0.65;
+      this.dirLight.color.setHex(0x4477dd);
+      this.dirLight.intensity = 0.85;
       this.spotlights.forEach((s) => (s.intensity = 3.8));
-      if (this.sunbeamMesh) this.sunbeamMesh.material.opacity = 0.08;
+      if (this.sunbeamMesh) this.sunbeamMesh.material.opacity = 0.12;
     }
   }
 
