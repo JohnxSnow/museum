@@ -45,6 +45,15 @@ class ImperialVirtualGallery {
     this.raycaster = new THREE.Raycaster();
     this.centerScreen = new THREE.Vector2(0, 0);
 
+    // Preallocated Zero-GC Objects for Rock-Solid 60 FPS
+    this._playerBox = new THREE.Box3();
+    this._boxMin = new THREE.Vector3();
+    this._boxMax = new THREE.Vector3();
+    this._prevPos = new THREE.Vector3();
+    this._forward = new THREE.Vector3();
+    this._right = new THREE.Vector3();
+    this._tempDir = new THREE.Vector3();
+
     // Dynamic Objects & Performance Optimization
     this.cullableLights = [];
     this.frameCounter = 0;
@@ -103,20 +112,19 @@ class ImperialVirtualGallery {
     );
     this.camera.position.set(0, this.playerHeight, 8);
 
-    // 3. Renderer setup - Smooth & Balanced Performance
+    // 3. Renderer setup - Smooth & Balanced Performance (Zero Stutter)
     this.renderer = new THREE.WebGLRenderer({
-      antialias: !this.isMobile,
+      antialias: false,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: true,
-      precision: this.isMobile ? 'mediump' : 'highp'
+      precision: 'mediump'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    const initialPr = this.isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.3);
+    const initialPr = this.isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25);
     this.renderer.setPixelRatio(initialPr);
-    this.renderer.shadowMap.enabled = !this.isMobile;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.22;
+    this.renderer.toneMappingExposure = 1.25;
     this.container.appendChild(this.renderer.domElement);
 
     // 4. Desktop Controls & Mobile Touch Controls
@@ -659,10 +667,12 @@ class ImperialVirtualGallery {
     colonnadeCoords.forEach(([cx, cy, cz]) => {
       const col = new THREE.Mesh(columnGeo, columnMat);
       col.position.set(cx, cy, cz);
-      col.castShadow = true;
-      col.receiveShadow = true;
       this.scene.add(col);
-      this.colliders.push(new THREE.Box3().setFromObject(col));
+      const colBox = new THREE.Box3().setFromObject(col);
+      colBox.centerX = cx;
+      colBox.centerZ = cz;
+      colBox.radiusSq = 4.0;
+      this.colliders.push(colBox);
     });
 
     // 7. Museum Benches in all Halls
@@ -710,14 +720,12 @@ class ImperialVirtualGallery {
     this.createPalacePlanter(-18, 12);
 
     // Lighting
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.48);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
     this.scene.add(this.ambientLight);
 
     this.dirLight = new THREE.DirectionalLight(0xfffaed, 0.95);
     this.dirLight.position.set(0, 26, 0);
-    this.dirLight.castShadow = true;
-    this.dirLight.shadow.mapSize.width = 2048;
-    this.dirLight.shadow.mapSize.height = 2048;
+    this.dirLight.castShadow = false;
     this.scene.add(this.dirLight);
   }
 
@@ -725,8 +733,6 @@ class ImperialVirtualGallery {
     const geo = new THREE.BoxGeometry(w, h, d);
     const wall = new THREE.Mesh(geo, mat);
     wall.position.set(x, y, z);
-    wall.receiveShadow = true;
-    wall.castShadow = true;
     this.scene.add(wall);
 
     if (hasDecorations) {
@@ -793,7 +799,12 @@ class ImperialVirtualGallery {
     }
 
     if (isCollider) {
-      this.colliders.push(new THREE.Box3().setFromObject(wall));
+      const box = new THREE.Box3().setFromObject(wall);
+      box.centerX = x;
+      box.centerZ = z;
+      const radius = Math.sqrt((w * w + d * d) / 4) + 1.2;
+      box.radiusSq = radius * radius;
+      this.colliders.push(box);
     }
     return wall;
   }
@@ -827,7 +838,11 @@ class ImperialVirtualGallery {
     benchGroup.add(leg2);
 
     this.scene.add(benchGroup);
-    this.colliders.push(new THREE.Box3().setFromObject(benchGroup));
+    const bBox = new THREE.Box3().setFromObject(benchGroup);
+    bBox.centerX = x;
+    bBox.centerZ = z;
+    bBox.radiusSq = 16.0;
+    this.colliders.push(bBox);
   }
 
   createVipStanchionRopes(x, z, rotY = 0) {
@@ -1117,10 +1132,12 @@ class ImperialVirtualGallery {
     // Tier 1: Ground White Carrara Basin (Radius 2.2m)
     const b1 = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.3, 0.55, 48), marbleBasinMat);
     b1.position.y = 0.275;
-    b1.castShadow = true;
-    b1.receiveShadow = true;
     this.scene.add(b1);
-    this.colliders.push(new THREE.Box3().setFromObject(b1));
+    const fBox = new THREE.Box3().setFromObject(b1);
+    fBox.centerX = 0;
+    fBox.centerZ = 0;
+    fBox.radiusSq = 16.0;
+    this.colliders.push(fBox);
 
     const r1 = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.06, 16, 48), basinRimMat);
     r1.rotation.x = Math.PI / 2;
@@ -1410,7 +1427,11 @@ class ImperialVirtualGallery {
     this.relicMeshes.push(treasureMesh);
 
     this.scene.add(group);
-    this.colliders.push(new THREE.Box3().setFromObject(pedestal));
+    const pBox = new THREE.Box3().setFromObject(pedestal);
+    pBox.centerX = x;
+    pBox.centerZ = z;
+    pBox.radiusSq = 6.0;
+    this.colliders.push(pBox);
   }
 
   setupCinematicTour() {
@@ -1658,6 +1679,8 @@ class ImperialVirtualGallery {
             realTexture.magFilter = THREE.LinearFilter;
             realTexture.generateMipmaps = true;
             canvasMat.map = realTexture;
+            canvasMat.emissiveMap = realTexture;
+            canvasMat.emissive = new THREE.Color(0x353535);
             canvasMat.needsUpdate = true;
           },
           undefined,
@@ -1667,6 +1690,8 @@ class ImperialVirtualGallery {
             const fbTex = new THREE.CanvasTexture(fallback);
             fbTex.encoding = THREE.sRGBEncoding;
             canvasMat.map = fbTex;
+            canvasMat.emissiveMap = fbTex;
+            canvasMat.emissive = new THREE.Color(0x353535);
             canvasMat.needsUpdate = true;
           }
         );
@@ -1675,6 +1700,8 @@ class ImperialVirtualGallery {
         const fbTex = new THREE.CanvasTexture(fallback);
         fbTex.encoding = THREE.sRGBEncoding;
         canvasMat.map = fbTex;
+        canvasMat.emissiveMap = fbTex;
+        canvasMat.emissive = new THREE.Color(0x353535);
         canvasMat.needsUpdate = true;
       }
 
@@ -1863,21 +1890,7 @@ class ImperialVirtualGallery {
       plaque.position.set(0, plaqueY, 0.02);
       artGroup.add(plaque);
 
-      // G. Dedicated Warm Gallery Spotlight aimed at the canvas
-      const spotLight = new THREE.SpotLight(0xfffaed, 3.4, 16, Math.PI / 4.2, 0.32, 1.15);
-      spotLight.position.set(
-        art.wallPosition.x,
-        art.wallPosition.y + art.height / 2 + 0.85,
-        art.wallPosition.z + (art.rotationY === 0 ? 1.2 : art.rotationY === Math.PI ? -1.2 : 0)
-      );
-      if (Math.abs(art.rotationY - Math.PI / 2) < 0.1) spotLight.position.x += 1.2;
-      if (Math.abs(art.rotationY + Math.PI / 2) < 0.1) spotLight.position.x -= 1.2;
-
-      spotLight.target = canvasMesh;
-      this.scene.add(spotLight);
-      this.spotlights.push(spotLight);
-      this.cullableLights.push(spotLight);
-
+      // Add Artwork Group to Scene
       this.scene.add(artGroup);
     });
   }
@@ -2289,21 +2302,17 @@ class ImperialVirtualGallery {
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.25;
     } else {
-      // Medium / Balanced default
+      // Medium / Balanced default (Rock-Solid 60 FPS)
       if (label) label.textContent = 'هاوسەنگ';
-      this.renderer.shadowMap.enabled = !this.isMobile;
-      this.renderer.shadowMap.type = THREE.PCFShadowMap;
-      this.renderer.shadowMap.needsUpdate = true;
-      this.renderer.setPixelRatio(this.isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25));
+      this.renderer.shadowMap.enabled = false;
+      this.renderer.setPixelRatio(this.isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.2));
       if (this.dirLight) {
-        this.dirLight.castShadow = !this.isMobile;
-        this.dirLight.shadow.mapSize.width = 1024;
-        this.dirLight.shadow.mapSize.height = 1024;
+        this.dirLight.castShadow = false;
       }
-      if (this.dustParticles) this.dustParticles.visible = !this.isMobile;
+      if (this.dustParticles) this.dustParticles.visible = false;
       if (this.waterParticles) this.waterParticles.visible = true;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.22;
+      this.renderer.toneMappingExposure = 1.25;
     }
 
     this.scene.traverse((obj) => {
@@ -2590,28 +2599,23 @@ class ImperialVirtualGallery {
   }
 
   checkArtworkProximity() {
-    // Throttle check to every 5 frames for buttery smooth frame rate
-    if (this.frameCounter % 5 !== 0) return;
+    // Throttle check to every 6 frames for buttery smooth frame rate
+    if (this.frameCounter % 6 !== 0) return;
 
-    this.raycaster.setFromCamera(this.centerScreen, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.artworksMeshes);
-
+    const camX = this.camera.position.x;
+    const camZ = this.camera.position.z;
     let nearest = null;
+    let nearestDistSq = 30.25; // 5.5m max proximity
 
-    if (intersects.length > 0 && intersects[0].distance < 8.0) {
-      nearest = intersects[0].object.userData.artwork;
-    } else {
-      const camX = this.camera.position.x;
-      const camZ = this.camera.position.z;
-      for (let i = 0; i < this.artworksMeshes.length; i++) {
-        const art = this.artworksMeshes[i].userData.artwork;
-        if (!art || !art.wallPosition) continue;
-        const dx = camX - art.wallPosition.x;
-        const dz = camZ - art.wallPosition.z;
-        if (dx * dx + dz * dz < 30.25) { // 5.5m distance squared (Zero allocation)
-          nearest = art;
-          break;
-        }
+    for (let i = 0; i < this.artworksMeshes.length; i++) {
+      const art = this.artworksMeshes[i].userData.artwork;
+      if (!art || !art.wallPosition) continue;
+      const dx = camX - art.wallPosition.x;
+      const dz = camZ - art.wallPosition.z;
+      const dSq = dx * dx + dz * dz;
+      if (dSq < nearestDistSq) {
+        nearestDistSq = dSq;
+        nearest = art;
       }
     }
 
@@ -2727,9 +2731,8 @@ class ImperialVirtualGallery {
     const px = toMapX(this.camera.position.x);
     const py = toMapY(this.camera.position.z);
 
-    const dir = new THREE.Vector3();
-    this.camera.getWorldDirection(dir);
-    const angle = Math.atan2(dir.z, dir.x);
+    this.camera.getWorldDirection(this._tempDir);
+    const angle = Math.atan2(this._tempDir.z, this._tempDir.x);
 
     ctx.fillStyle = 'rgba(212, 175, 55, 0.35)';
     ctx.beginPath();
@@ -2805,36 +2808,43 @@ class ImperialVirtualGallery {
       return;
     }
 
-    const prevPosition = this.camera.position.clone();
+    this._prevPos.copy(this.camera.position);
 
     if (this.controls && this.controls.isLocked) {
       this.controls.moveRight(-this.velocity.x * delta);
       this.controls.moveForward(-this.velocity.z * delta);
     } else {
-      // Direct relative camera translate for mobile
-      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-      forward.y = 0;
-      forward.normalize();
+      // Direct relative camera translate for mobile (Zero Allocation)
+      this._forward.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
+      this._forward.y = 0;
+      this._forward.normalize();
 
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-      right.y = 0;
-      right.normalize();
+      this._right.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+      this._right.y = 0;
+      this._right.normalize();
 
-      this.camera.position.addScaledVector(forward, -this.velocity.z * delta);
-      this.camera.position.addScaledVector(right, -this.velocity.x * delta);
+      this.camera.position.addScaledVector(this._forward, -this.velocity.z * delta);
+      this.camera.position.addScaledVector(this._right, -this.velocity.x * delta);
     }
 
-    // Collision Detection
+    // Collision Detection (Zero GC Allocation & Spatial Radius Pre-filter)
     const playerRadius = 0.55;
-    const playerBox = new THREE.Box3(
-      new THREE.Vector3(this.camera.position.x - playerRadius, 0.1, this.camera.position.z - playerRadius),
-      new THREE.Vector3(this.camera.position.x + playerRadius, this.playerHeight + 0.1, this.camera.position.z + playerRadius)
-    );
+    const px = this.camera.position.x;
+    const pz = this.camera.position.z;
 
-    for (const collider of this.colliders) {
-      if (playerBox.intersectsBox(collider)) {
-        this.camera.position.x = prevPosition.x;
-        this.camera.position.z = prevPosition.z;
+    this._boxMin.set(px - playerRadius, 0.1, pz - playerRadius);
+    this._boxMax.set(px + playerRadius, this.playerHeight + 0.1, pz + playerRadius);
+    this._playerBox.set(this._boxMin, this._boxMax);
+
+    for (let i = 0; i < this.colliders.length; i++) {
+      const collider = this.colliders[i];
+      if (collider.centerX !== undefined) {
+        const dx = px - collider.centerX;
+        const dz = pz - collider.centerZ;
+        if (dx * dx + dz * dz > collider.radiusSq) continue;
+      }
+      if (this._playerBox.intersectsBox(collider)) {
+        this.camera.position.copy(this._prevPos);
         this.velocity.x = 0;
         this.velocity.z = 0;
         break;
