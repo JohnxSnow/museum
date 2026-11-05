@@ -26,7 +26,7 @@ class ImperialVirtualGallery {
     this.playerHeight = 2.4;
 
     // Mobile Touch Joystick State
-    this.isMobile = false;
+    this.isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 900);
     this.joystickActive = false;
     this.joystickTouchId = null;
     this.joystickOrigin = { x: 0, y: 0 };
@@ -45,7 +45,9 @@ class ImperialVirtualGallery {
     this.raycaster = new THREE.Raycaster();
     this.centerScreen = new THREE.Vector2(0, 0);
 
-    // Dynamic Objects
+    // Dynamic Objects & Performance Optimization
+    this.cullableLights = [];
+    this.frameCounter = 0;
     this.waterParticles = null;
     this.particleVelocities = [];
     this.centerSculpture = null;
@@ -81,7 +83,7 @@ class ImperialVirtualGallery {
     this.defaultFov = 60;
     this.currentFilter = 'none';
     this.lastCapturedPhotoData = null;
-    this.graphicsQuality = localStorage.getItem('gallery_graphics_quality') || 'medium';
+    this.graphicsQuality = localStorage.getItem('gallery_graphics_quality') || (this.isMobile ? 'low' : 'medium');
 
     this.init();
   }
@@ -101,12 +103,18 @@ class ImperialVirtualGallery {
     );
     this.camera.position.set(0, this.playerHeight, 8);
 
-    // 3. Renderer setup
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
+    // 3. Renderer setup - Smooth & Balanced Performance
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: !this.isMobile,
+      powerPreference: 'high-performance',
+      preserveDrawingBuffer: true,
+      precision: this.isMobile ? 'mediump' : 'highp'
+    });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const initialPr = this.isMobile ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1.3);
+    this.renderer.setPixelRatio(initialPr);
+    this.renderer.shadowMap.enabled = !this.isMobile;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.22;
     this.container.appendChild(this.renderer.domElement);
@@ -1227,7 +1235,9 @@ class ImperialVirtualGallery {
 
       const lanternLight = new THREE.PointLight(0xffeaad, 1.2, 14);
       lanternLight.position.copy(lantern.position);
+      lanternLight.userData = { worldPos: new THREE.Vector3(lantern.position.x, 7.0 + lantern.position.y, lantern.position.z) };
       mezzanineGroup.add(lanternLight);
+      this.cullableLights.push(lanternLight);
     }
 
     this.scene.add(mezzanineGroup);
@@ -1318,7 +1328,9 @@ class ImperialVirtualGallery {
 
     const chLight = new THREE.PointLight(0xffeedd, 1.8, 20);
     chLight.position.y = -0.2 * scale;
+    chLight.userData = { worldPos: new THREE.Vector3(x, y - 0.2 * scale, z) };
     chGroup.add(chLight);
+    this.cullableLights.push(chLight);
 
     this.scene.add(chGroup);
     this.chandeliers.push(chGroup);
@@ -1614,7 +1626,7 @@ class ImperialVirtualGallery {
           src,
           (realTexture) => {
             realTexture.encoding = THREE.sRGBEncoding;
-            realTexture.anisotropy = 16;
+            realTexture.anisotropy = this.isMobile ? 1 : Math.min(this.renderer.capabilities.getMaxAnisotropy() || 1, 4);
             realTexture.minFilter = THREE.LinearMipmapLinearFilter;
             realTexture.magFilter = THREE.LinearFilter;
             realTexture.generateMipmaps = true;
@@ -1829,6 +1841,7 @@ class ImperialVirtualGallery {
       spotLight.target = canvasMesh;
       this.scene.add(spotLight);
       this.spotlights.push(spotLight);
+      this.cullableLights.push(spotLight);
 
       this.scene.add(artGroup);
     });
@@ -1842,7 +1855,7 @@ class ImperialVirtualGallery {
       src,
       (realTexture) => {
         realTexture.encoding = THREE.sRGBEncoding;
-        realTexture.anisotropy = 16;
+        realTexture.anisotropy = this.isMobile ? 1 : Math.min(this.renderer.capabilities.getMaxAnisotropy() || 1, 4);
         realTexture.minFilter = THREE.LinearMipmapLinearFilter;
         realTexture.magFilter = THREE.LinearFilter;
         canvasMat.map = realTexture;
@@ -2223,34 +2236,37 @@ class ImperialVirtualGallery {
       this.renderer.setPixelRatio(1.0);
       if (this.dirLight) this.dirLight.castShadow = false;
       if (this.dustParticles) this.dustParticles.visible = false;
+      if (this.waterParticles) this.waterParticles.visible = false;
       this.renderer.toneMapping = THREE.LinearToneMapping;
     } else if (level === 'ultra') {
       if (label) label.textContent = 'شاهانە';
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.shadowMap.needsUpdate = true;
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
       if (this.dirLight) {
         this.dirLight.castShadow = true;
         this.dirLight.shadow.mapSize.width = 2048;
         this.dirLight.shadow.mapSize.height = 2048;
       }
       if (this.dustParticles) this.dustParticles.visible = true;
+      if (this.waterParticles) this.waterParticles.visible = true;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.25;
     } else {
       // Medium / Balanced default
       if (label) label.textContent = 'هاوسەنگ';
-      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.enabled = !this.isMobile;
       this.renderer.shadowMap.type = THREE.PCFShadowMap;
       this.renderer.shadowMap.needsUpdate = true;
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      this.renderer.setPixelRatio(this.isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25));
       if (this.dirLight) {
-        this.dirLight.castShadow = true;
+        this.dirLight.castShadow = !this.isMobile;
         this.dirLight.shadow.mapSize.width = 1024;
         this.dirLight.shadow.mapSize.height = 1024;
       }
-      if (this.dustParticles) this.dustParticles.visible = true;
+      if (this.dustParticles) this.dustParticles.visible = !this.isMobile;
+      if (this.waterParticles) this.waterParticles.visible = true;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.22;
     }
@@ -2539,6 +2555,9 @@ class ImperialVirtualGallery {
   }
 
   checkArtworkProximity() {
+    // Throttle check to every 5 frames for buttery smooth frame rate
+    if (this.frameCounter % 5 !== 0) return;
+
     this.raycaster.setFromCamera(this.centerScreen, this.camera);
     const intersects = this.raycaster.intersectObjects(this.artworksMeshes);
 
@@ -2547,13 +2566,14 @@ class ImperialVirtualGallery {
     if (intersects.length > 0 && intersects[0].distance < 8.0) {
       nearest = intersects[0].object.userData.artwork;
     } else {
-      const camPos = this.camera.position;
-      for (const mesh of this.artworksMeshes) {
-        const art = mesh.userData.artwork;
-        const meshWorldPos = new THREE.Vector3();
-        mesh.getWorldPosition(meshWorldPos);
-        const dist = camPos.distanceTo(meshWorldPos);
-        if (dist < 5.5) {
+      const camX = this.camera.position.x;
+      const camZ = this.camera.position.z;
+      for (let i = 0; i < this.artworksMeshes.length; i++) {
+        const art = this.artworksMeshes[i].userData.artwork;
+        if (!art || !art.wallPosition) continue;
+        const dx = camX - art.wallPosition.x;
+        const dz = camZ - art.wallPosition.z;
+        if (dx * dx + dz * dz < 30.25) { // 5.5m distance squared (Zero allocation)
           nearest = art;
           break;
         }
@@ -2621,6 +2641,7 @@ class ImperialVirtualGallery {
 
   drawMinimap() {
     if (!this.minimapCtx) return;
+    if (this.frameCounter % 4 !== 0) return; // Update at smooth ~15 FPS to eliminate 2D canvas lag
     const ctx = this.minimapCtx;
     const w = this.minimapCanvas.width;
     const h = this.minimapCanvas.height;
@@ -2806,25 +2827,52 @@ class ImperialVirtualGallery {
     requestAnimationFrame(() => this.animate());
 
     const delta = Math.min(this.clock.getDelta(), 0.1);
+    this.frameCounter = (this.frameCounter || 0) + 1;
 
-    // Rotate Fountain Sculpture
-    if (this.centerSculpture) {
+    const camX = this.camera.position.x;
+    const camY = this.camera.position.y;
+    const camZ = this.camera.position.z;
+
+    // 1. Dynamic Light Distance Culling (Evaluated every 6 frames)
+    // Deactivates far spotlights & point lights so the GPU only renders lights in your current hall!
+    if (this.frameCounter % 6 === 0 && this.cullableLights && this.cullableLights.length > 0) {
+      const maxDistSq = this.isMobile ? 484 : 784; // 22m on mobile, 28m on desktop
+      for (let i = 0; i < this.cullableLights.length; i++) {
+        const light = this.cullableLights[i];
+        if (!light) continue;
+        const targetPos = (light.userData && light.userData.worldPos) ? light.userData.worldPos : light.position;
+        const dx = camX - targetPos.x;
+        const dy = camY - targetPos.y;
+        const dz = camZ - targetPos.z;
+        light.visible = (dx * dx + dy * dy + dz * dz < maxDistSq);
+      }
+    }
+
+    // 2. Rotate Centerpiece & Relics (Only when nearby)
+    const isNearRotunda = (camX * camX + camZ * camZ < 1296); // < 36m
+
+    if (this.centerSculpture && isNearRotunda) {
       this.centerSculpture.rotation.y += delta * 0.35;
       this.centerSculpture.rotation.x += delta * 0.15;
     }
 
-    // Rotate Relics
-    this.relicMeshes.forEach((relic) => {
-      relic.rotation.y += delta * 0.5;
-    });
+    // Rotate Relics (cull distant ones)
+    for (let i = 0; i < this.relicMeshes.length; i++) {
+      const relic = this.relicMeshes[i];
+      const dx = camX - relic.position.x;
+      const dz = camZ - relic.position.z;
+      if (dx * dx + dz * dz < 400) {
+        relic.rotation.y += delta * 0.5;
+      }
+    }
 
-    // Animate Sunbeam
-    if (this.sunbeamMesh) {
+    // 3. Animate Sunbeam
+    if (this.sunbeamMesh && isNearRotunda) {
       this.sunbeamMesh.rotation.y += delta * 0.03;
     }
 
-    // Animate Fountain Water Particles
-    if (this.waterParticles) {
+    // 4. Animate Fountain Water & Dust Particles (only when inside Rotunda zone < 36m)
+    if (this.waterParticles && isNearRotunda) {
       const positions = this.waterParticles.geometry.attributes.position.array;
       const count = positions.length / 3;
 
@@ -2848,8 +2896,7 @@ class ImperialVirtualGallery {
       this.waterParticles.geometry.attributes.position.needsUpdate = true;
     }
 
-    // Animate Floating Golden Dust Motes in the Sunbeam
-    if (this.dustParticles && this.dustVelocities) {
+    if (this.dustParticles && this.dustVelocities && isNearRotunda) {
       const dPositions = this.dustParticles.geometry.attributes.position.array;
       const dCount = dPositions.length / 3;
       for (let i = 0; i < dCount; i++) {
@@ -2864,14 +2911,14 @@ class ImperialVirtualGallery {
       this.dustParticles.geometry.attributes.position.needsUpdate = true;
     }
 
-    // Movement & Proximity
+    // 5. Movement & Proximity
     this.updateMovement(delta);
     this.checkArtworkProximity();
 
-    // Render Minimap
+    // 6. Render Minimap
     this.drawMinimap();
 
-    // Render 3D Scene
+    // 7. Render 3D Scene
     this.renderer.render(this.scene, this.camera);
   }
 }
