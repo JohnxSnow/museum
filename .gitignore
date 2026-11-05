@@ -1,17 +1,14 @@
-# Dependencies
+# Node & Server files (kept locally for local server, not deployed to Vercel)
+package.json
+server.js
+download_artworks.js
+start.bat
+run_gallery.bat
+.vercelignore
 node_modules/
-package-lock.json
 
-# Local Environment & Logs
-*.log
-npm-debug.log*
-
-# OS metadata
+# OS metadata & Logs
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Optional local windows runners (can be excluded or included)
-# start.bat
-# run_gallery.bat
-
+*.log

@@ -1,5 +1,0 @@
-# Exclude local development scripts from Vercel
-server.js
-download_artworks.js
-start.bat
-run_gallery.bat
