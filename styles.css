@@ -515,6 +515,137 @@ body, html {
   white-space: nowrap;
 }
 
+/* Compact Welcome Screen for Instant Mobile & Desktop Launch */
+.welcome-compact {
+  max-width: 500px !important;
+  width: 92% !important;
+  padding: 24px 20px !important;
+  max-height: 90vh !important;
+  overflow-y: auto;
+  text-align: center;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.welcome-badge {
+  display: inline-block;
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--primary);
+  border: 1px solid var(--primary-glow);
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.welcome-title {
+  font-size: 1.45rem !important;
+  font-weight: 900 !important;
+  margin: 0 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #ecd690 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.creator-welcome-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(13, 19, 33, 0.75) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.86rem;
+  color: #fff4d0;
+  direction: rtl;
+}
+
+.creator-welcome-card .cw-crown {
+  font-size: 1.2rem;
+}
+
+.creator-welcome-card .cw-text {
+  flex: 1;
+  text-align: center;
+}
+
+.creator-welcome-card .cw-text strong {
+  color: var(--primary);
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+.creator-welcome-card .cw-badge {
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.main-start-btn {
+  width: 100% !important;
+  max-width: 320px !important;
+  padding: 16px 24px !important;
+  font-size: 1.15rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.5px;
+  margin: 6px 0 !important;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.welcome-quick-guide {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.guide-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  direction: rtl;
+}
+
+@media (max-width: 768px) {
+  .welcome-compact {
+    padding: 18px 14px !important;
+    gap: 10px !important;
+  }
+  .welcome-title {
+    font-size: 1.25rem !important;
+  }
+  .creator-welcome-card {
+    font-size: 0.78rem !important;
+    padding: 6px 10px !important;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .main-start-btn {
+    padding: 14px 20px !important;
+    font-size: 1.05rem !important;
+  }
+  .guide-pill {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+  }
+}
+
 .controls-guide {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

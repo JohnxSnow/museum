@@ -111,7 +111,7 @@ class ImperialVirtualGallery {
       precision: this.isMobile ? 'mediump' : 'highp'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    const initialPr = this.isMobile ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1.3);
+    const initialPr = this.isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.3);
     this.renderer.setPixelRatio(initialPr);
     this.renderer.shadowMap.enabled = !this.isMobile;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -1699,121 +1699,129 @@ class ImperialVirtualGallery {
         metalness: 0.05
       });
 
-      // A. Inner Gold Leaf Fillet Bead - strictly outside canvas perimeter
+      // Framing Dimensions
       const filletInnerX = art.width / 2;
       const filletInnerY = art.height / 2;
-
-      const fTop = new THREE.Mesh(new THREE.BoxGeometry(art.width + filletW * 2, filletW, 0.025), goldFrameMat);
-      fTop.position.set(0, filletInnerY + filletW / 2, 0.015);
-      artGroup.add(fTop);
-
-      const fBot = new THREE.Mesh(new THREE.BoxGeometry(art.width + filletW * 2, filletW, 0.025), goldFrameMat);
-      fBot.position.set(0, -filletInnerY - filletW / 2, 0.015);
-      artGroup.add(fBot);
-
-      const fLeft = new THREE.Mesh(new THREE.BoxGeometry(filletW, art.height, 0.025), goldFrameMat);
-      fLeft.position.set(-filletInnerX - filletW / 2, 0, 0.015);
-      artGroup.add(fLeft);
-
-      const fRight = new THREE.Mesh(new THREE.BoxGeometry(filletW, art.height, 0.025), goldFrameMat);
-      fRight.position.set(filletInnerX + filletW / 2, 0, 0.015);
-      artGroup.add(fRight);
-
-      // B. Linen Passe-Partout Mat Border - strictly outside fillet
       const matInnerX = filletInnerX + filletW;
       const matInnerY = filletInnerY + filletW;
-
-      const matTop = new THREE.Mesh(new THREE.BoxGeometry(art.width + (filletW + matW) * 2, matW, 0.03), matBoardMat);
-      matTop.position.set(0, matInnerY + matW / 2, 0.01);
-      artGroup.add(matTop);
-
-      const matBot = new THREE.Mesh(new THREE.BoxGeometry(art.width + (filletW + matW) * 2, matW, 0.03), matBoardMat);
-      matBot.position.set(0, -matInnerY - matW / 2, 0.01);
-      artGroup.add(matBot);
-
-      const matLeft = new THREE.Mesh(new THREE.BoxGeometry(matW, art.height + filletW * 2, 0.03), matBoardMat);
-      matLeft.position.set(-matInnerX - matW / 2, 0, 0.01);
-      artGroup.add(matLeft);
-
-      const matRight = new THREE.Mesh(new THREE.BoxGeometry(matW, art.height + filletW * 2, 0.03), matBoardMat);
-      matRight.position.set(matInnerX + matW / 2, 0, 0.01);
-      artGroup.add(matRight);
-
-      // C. Outer Gilded Stepped Moulding Bars - strictly outside mat, projects forward by frameDepth
       const frameInnerX = matInnerX + matW;
       const frameInnerY = matInnerY + matW;
       const outerTotalW = art.width + (filletW + matW + frameMouldingW) * 2;
       const outerTotalH = art.height + (filletW + matW + frameMouldingW) * 2;
 
-      const topBar = new THREE.Mesh(new THREE.BoxGeometry(outerTotalW, frameMouldingW, frameDepth), goldFrameMat);
-      topBar.position.set(0, frameInnerY + frameMouldingW / 2, 0.02);
-      artGroup.add(topBar);
+      if (this.isMobile) {
+        // High-Performance Mobile Frame: Single Unified Gilded Mesh (Saves ~1,300 draw calls)
+        const mobileFrameGeo = new THREE.BoxGeometry(outerTotalW, outerTotalH, 0.05);
+        const mobileFrame = new THREE.Mesh(mobileFrameGeo, goldFrameMat);
+        mobileFrame.position.set(0, 0, -0.015);
+        artGroup.add(mobileFrame);
+      } else {
+        // Desktop: Ultra-detailed ornamental stepped gallery frame
+        // A. Inner Gold Leaf Fillet Bead - strictly outside canvas perimeter
+        const fTop = new THREE.Mesh(new THREE.BoxGeometry(art.width + filletW * 2, filletW, 0.025), goldFrameMat);
+        fTop.position.set(0, filletInnerY + filletW / 2, 0.015);
+        artGroup.add(fTop);
 
-      const botBar = new THREE.Mesh(new THREE.BoxGeometry(outerTotalW, frameMouldingW, frameDepth), goldFrameMat);
-      botBar.position.set(0, -frameInnerY - frameMouldingW / 2, 0.02);
-      artGroup.add(botBar);
+        const fBot = new THREE.Mesh(new THREE.BoxGeometry(art.width + filletW * 2, filletW, 0.025), goldFrameMat);
+        fBot.position.set(0, -filletInnerY - filletW / 2, 0.015);
+        artGroup.add(fBot);
 
-      const leftBar = new THREE.Mesh(new THREE.BoxGeometry(frameMouldingW, art.height + (filletW + matW) * 2, frameDepth), goldFrameMat);
-      leftBar.position.set(-frameInnerX - frameMouldingW / 2, 0, 0.02);
-      artGroup.add(leftBar);
+        const fLeft = new THREE.Mesh(new THREE.BoxGeometry(filletW, art.height, 0.025), goldFrameMat);
+        fLeft.position.set(-filletInnerX - filletW / 2, 0, 0.015);
+        artGroup.add(fLeft);
 
-      const rightBar = new THREE.Mesh(new THREE.BoxGeometry(frameMouldingW, art.height + (filletW + matW) * 2, frameDepth), goldFrameMat);
-      rightBar.position.set(frameInnerX + frameMouldingW / 2, 0, 0.02);
-      artGroup.add(rightBar);
+        const fRight = new THREE.Mesh(new THREE.BoxGeometry(filletW, art.height, 0.025), goldFrameMat);
+        fRight.position.set(filletInnerX + filletW / 2, 0, 0.015);
+        artGroup.add(fRight);
 
-      // D. 4 Gilded Ornamental Corner Rosettes & Diamond Jewels
-      const cornerSize = frameMouldingW * 1.15;
-      const cornerGeo = new THREE.BoxGeometry(cornerSize, cornerSize, frameDepth + 0.025);
-      const cx = frameInnerX + frameMouldingW / 2;
-      const cy = frameInnerY + frameMouldingW / 2;
+        // B. Linen Passe-Partout Mat Border - strictly outside fillet
+        const matTop = new THREE.Mesh(new THREE.BoxGeometry(art.width + (filletW + matW) * 2, matW, 0.03), matBoardMat);
+        matTop.position.set(0, matInnerY + matW / 2, 0.01);
+        artGroup.add(matTop);
 
-      [[-cx, cy], [cx, cy], [-cx, -cy], [cx, -cy]].forEach(([cornerX, cornerY]) => {
-        const rosette = new THREE.Mesh(cornerGeo, goldFrameMat);
-        rosette.position.set(cornerX, cornerY, 0.025);
-        artGroup.add(rosette);
+        const matBot = new THREE.Mesh(new THREE.BoxGeometry(art.width + (filletW + matW) * 2, matW, 0.03), matBoardMat);
+        matBot.position.set(0, -matInnerY - matW / 2, 0.01);
+        artGroup.add(matBot);
 
-        const jewel = new THREE.Mesh(new THREE.ConeGeometry(cornerSize * 0.35, 0.05, 4), goldFrameMat);
-        jewel.rotation.x = -Math.PI / 2;
-        jewel.rotation.z = Math.PI / 4;
-        jewel.position.set(cornerX, cornerY, 0.025 + frameDepth / 2 + 0.025);
-        artGroup.add(jewel);
-      });
+        const matLeft = new THREE.Mesh(new THREE.BoxGeometry(matW, art.height + filletW * 2, 0.03), matBoardMat);
+        matLeft.position.set(-matInnerX - matW / 2, 0, 0.01);
+        artGroup.add(matLeft);
 
-      // E. Backing Bay Niche Panel with Architectural Flanking LED & Soft Ambient Halo
-      const bayW = outerTotalW + 0.45;
-      const bayH = outerTotalH + 0.45;
-      const bayMat = new THREE.MeshStandardMaterial({
-        color: 0x0c0f16,
-        roughness: 0.5,
-        metalness: 0.25
-      });
-      const bayMesh = new THREE.Mesh(new THREE.BoxGeometry(bayW, bayH, 0.04), bayMat);
-      bayMesh.position.set(0, 0, -0.04);
-      artGroup.add(bayMesh);
+        const matRight = new THREE.Mesh(new THREE.BoxGeometry(matW, art.height + filletW * 2, 0.03), matBoardMat);
+        matRight.position.set(matInnerX + matW / 2, 0, 0.01);
+        artGroup.add(matRight);
 
-      const ledChannelMat = new THREE.MeshBasicMaterial({
-        color: art.isVip ? 0xffe58f : 0xfffaed,
-        transparent: true,
-        opacity: 0.45
-      });
-      const leftStrip = new THREE.Mesh(new THREE.BoxGeometry(0.035, bayH - 0.1, 0.02), ledChannelMat);
-      leftStrip.position.set(-bayW / 2 + 0.06, 0, -0.02);
-      artGroup.add(leftStrip);
+        // C. Outer Gilded Stepped Moulding Bars - strictly outside mat, projects forward by frameDepth
+        const topBar = new THREE.Mesh(new THREE.BoxGeometry(outerTotalW, frameMouldingW, frameDepth), goldFrameMat);
+        topBar.position.set(0, frameInnerY + frameMouldingW / 2, 0.02);
+        artGroup.add(topBar);
 
-      const rightStrip = new THREE.Mesh(new THREE.BoxGeometry(0.035, bayH - 0.1, 0.02), ledChannelMat);
-      rightStrip.position.set(bayW / 2 - 0.06, 0, -0.02);
-      artGroup.add(rightStrip);
+        const botBar = new THREE.Mesh(new THREE.BoxGeometry(outerTotalW, frameMouldingW, frameDepth), goldFrameMat);
+        botBar.position.set(0, -frameInnerY - frameMouldingW / 2, 0.02);
+        artGroup.add(botBar);
 
-      const haloGeo = new THREE.PlaneGeometry(outerTotalW + 0.8, outerTotalH + 0.8);
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: art.isVip ? 0xffea9f : 0xfffaed,
-        transparent: true,
-        opacity: 0.2,
-        depthWrite: false
-      });
-      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-      haloMesh.position.set(0, 0, -0.065);
-      artGroup.add(haloMesh);
+        const leftBar = new THREE.Mesh(new THREE.BoxGeometry(frameMouldingW, art.height + (filletW + matW) * 2, frameDepth), goldFrameMat);
+        leftBar.position.set(-frameInnerX - frameMouldingW / 2, 0, 0.02);
+        artGroup.add(leftBar);
+
+        const rightBar = new THREE.Mesh(new THREE.BoxGeometry(frameMouldingW, art.height + (filletW + matW) * 2, frameDepth), goldFrameMat);
+        rightBar.position.set(frameInnerX + frameMouldingW / 2, 0, 0.02);
+        artGroup.add(rightBar);
+
+        // D. 4 Gilded Ornamental Corner Rosettes & Diamond Jewels
+        const cornerSize = frameMouldingW * 1.15;
+        const cornerGeo = new THREE.BoxGeometry(cornerSize, cornerSize, frameDepth + 0.025);
+        const cx = frameInnerX + frameMouldingW / 2;
+        const cy = frameInnerY + frameMouldingW / 2;
+
+        [[-cx, cy], [cx, cy], [-cx, -cy], [cx, -cy]].forEach(([cornerX, cornerY]) => {
+          const rosette = new THREE.Mesh(cornerGeo, goldFrameMat);
+          rosette.position.set(cornerX, cornerY, 0.025);
+          artGroup.add(rosette);
+
+          const jewel = new THREE.Mesh(new THREE.ConeGeometry(cornerSize * 0.35, 0.05, 4), goldFrameMat);
+          jewel.rotation.x = -Math.PI / 2;
+          jewel.rotation.z = Math.PI / 4;
+          jewel.position.set(cornerX, cornerY, 0.025 + frameDepth / 2 + 0.025);
+          artGroup.add(jewel);
+        });
+
+        // E. Backing Bay Niche Panel with Architectural Flanking LED & Soft Ambient Halo
+        const bayW = outerTotalW + 0.45;
+        const bayH = outerTotalH + 0.45;
+        const bayMat = new THREE.MeshStandardMaterial({
+          color: 0x0c0f16,
+          roughness: 0.5,
+          metalness: 0.25
+        });
+        const bayMesh = new THREE.Mesh(new THREE.BoxGeometry(bayW, bayH, 0.04), bayMat);
+        bayMesh.position.set(0, 0, -0.04);
+        artGroup.add(bayMesh);
+
+        const ledChannelMat = new THREE.MeshBasicMaterial({
+          color: art.isVip ? 0xffe58f : 0xfffaed,
+          transparent: true,
+          opacity: 0.45
+        });
+        const leftStrip = new THREE.Mesh(new THREE.BoxGeometry(0.035, bayH - 0.1, 0.02), ledChannelMat);
+        leftStrip.position.set(-bayW / 2 + 0.06, 0, -0.02);
+        artGroup.add(leftStrip);
+
+        const rightStrip = new THREE.Mesh(new THREE.BoxGeometry(0.035, bayH - 0.1, 0.02), ledChannelMat);
+        rightStrip.position.set(bayW / 2 - 0.06, 0, -0.02);
+        artGroup.add(rightStrip);
+
+        const haloGeo = new THREE.PlaneGeometry(outerTotalW + 0.8, outerTotalH + 0.8);
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: art.isVip ? 0xffea9f : 0xfffaed,
+          transparent: true,
+          opacity: 0.2,
+          depthWrite: false
+        });
+        const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+        haloMesh.position.set(0, 0, -0.065);
+        artGroup.add(haloMesh);
+      }
 
       // F. Engraved Beveled Brass Museum Title Plaque with Kurdish & English Typography
       const plaqueCanvas = document.createElement('canvas');

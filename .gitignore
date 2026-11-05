@@ -4,6 +4,7 @@ server.js
 download_artworks.js
 start.bat
 run_gallery.bat
+artwork_data.js
 .vercelignore
 node_modules/
 
